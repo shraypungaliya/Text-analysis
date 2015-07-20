@@ -1,40 +1,45 @@
-(ns debug.core
+(ns word-frequency.core
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str])
+  (:import [clojure.java.io]))
 
-(defn stop-word-set
-  [stopword-filename]
-  (into #{}
-        (conj (str/split
-                 (slurp stopword-filename)
-                 #"\n")
-              "")))
+(def my-stop-file
+  "/Users/shray/GitHub/Text-analysis/word-frequency/test/word-frequency/Stopwords.txt")
+(def my-input-file
+  "/Users/shray/GitHub/Text-analysis/word-frequency/test/word-frequency/AliceInWonderland.txt")
 
 (defn read-file
   [filename]
-  (reduce concat 
-          (for [x (with-open [rdr (clojure.java.io/reader filename)]
-                     (reduce conj []
-                             (line-seq rdr)))]
-            (str/split (str/lower-case x)
-                       #" "))))
+  (->> filename
+       slurp
+       (re-seq #"\w+")
+       (remove str/blank?)
+       (map str/lower-case)))
 
-(defn filter-stop
+
+(defn stop-word-set
+  [stopword-filename]
+  (into #{} (read-file stopword-filename)))
+
+(defn remove-stop
   [stop-set word-list]
   (remove stop-set
           word-list))
 
 (defn sort-freq
-  [stop-file word-file]
+  [list]
   (sort-by val
            >
-           (frequencies (filter-stop (stop-word-set stop-file)
-                                     (read-file word-file)))))
+           (frequencies list)))
 
-(defn get-upper-lower-five
-  [stop-file word-file]
-  (let [l (sort-freq stop-file word-file)]
-    {:top-5  (map first
-                  (take 5 l))
-     :bottom-5 (map first
-                    (take-last 5 l))}))
+(defn get-most-and-least-common
+  [stop-file word-file amount]
+  (let [stop-words (stop-word-set stop-file)
+        m (->> word-file
+              read-file
+              (remove-stop stop-words)
+              sort-freq)]
+    {:most-common  (map first
+                        (take amount m))
+     :least-common (map first
+                    (take-last amount m))}))
